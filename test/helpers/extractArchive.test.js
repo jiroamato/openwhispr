@@ -182,7 +182,7 @@ test("extractArchive falls back to PowerShell when Windows tar rejects a zip arc
         args: [
           "-NoProfile",
           "-Command",
-          "Expand-Archive -Force -LiteralPath 'C:\\cache\\binary.zip' -DestinationPath 'C:\\cache\\extract'",
+          "Expand-Archive -ErrorAction Stop -Force -LiteralPath 'C:\\cache\\binary.zip' -DestinationPath 'C:\\cache\\extract'",
         ],
       },
     ]);
@@ -219,7 +219,7 @@ test("extractArchive PowerShell fallback quotes apostrophe paths safely", async 
     assert.deepEqual(execCalls[0].args, [
       "-NoProfile",
       "-Command",
-      "Expand-Archive -Force -LiteralPath 'C:\\Users\\O''Brien\\cache\\binary.zip' -DestinationPath 'C:\\Users\\O''Brien\\cache\\extract'",
+      "Expand-Archive -ErrorAction Stop -Force -LiteralPath 'C:\\Users\\O''Brien\\cache\\binary.zip' -DestinationPath 'C:\\Users\\O''Brien\\cache\\extract'",
     ]);
   } finally {
     cp.execFile = originalExecFile;

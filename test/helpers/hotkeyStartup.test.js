@@ -108,7 +108,9 @@ function fixture(backend, savedHotkey = "Scrolllock", registrationResult = true)
 // Runs main.js's startup Hold check, the code between createMainWindow() and the
 // backend's delayed registration, against the given window manager.
 function startupHoldCheck(windowManager, { writes = [], notifications = [] } = {}) {
-  const main = fs.readFileSync(path.join(__dirname, "../../main.js"), "utf8");
+  const main = fs
+    .readFileSync(path.join(__dirname, "../../main.js"), "utf8")
+    .replace(/\r\n/g, "\n");
   const start = main.indexOf("async function dropUnsupportedStartupHold() {");
   assert.notEqual(start, -1);
   const recheck = main.indexOf("async function checkStartupHold() {", start);
@@ -278,7 +280,9 @@ test("startup checks the registered hotkey when no desktop backend delays it", a
 });
 
 test("startup checks Hold before the control panel opens and the hotkey registers", () => {
-  const main = fs.readFileSync(path.join(__dirname, "../../main.js"), "utf8");
+  const main = fs
+    .readFileSync(path.join(__dirname, "../../main.js"), "utf8")
+    .replace(/\r\n/g, "\n");
   const created = main.indexOf("  await windowManager.createMainWindow();\n");
   assert.notEqual(created, -1);
   const next = created + "  await windowManager.createMainWindow();\n".length;

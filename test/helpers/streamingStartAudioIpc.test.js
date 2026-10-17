@@ -140,6 +140,7 @@ test.before(async () => {
 test.after(async () => {
   for (const client of server.clients) client.terminate();
   await new Promise((resolve) => server.close(resolve));
+  target?.metaActivation?.dispose();
   Module._load = originalLoad;
   fs.rmSync(userDataDirectory, { recursive: true, force: true });
 });

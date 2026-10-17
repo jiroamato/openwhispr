@@ -76,10 +76,10 @@ async function renderChatStreaming(
     cachePrefix: "openwhispr-chat-streaming-flush-test-",
     mockModules: SIGNED_OUT_AUTH_MOCK,
   });
-  const [{ default: viteI18next }, { initReactI18next }] = await Promise.all([
-    vite.ssrLoadModule("i18next"),
-    vite.ssrLoadModule("react-i18next"),
-  ]);
+  // react-i18next depends on i18next. Concurrent Vite SSR imports can
+  // deadlock their module initialization when the full suite is under load.
+  const { default: viteI18next } = await vite.ssrLoadModule("i18next");
+  const { initReactI18next } = await vite.ssrLoadModule("react-i18next");
   if (!viteI18next.isInitialized) {
     const translation = JSON.parse(
       fs.readFileSync(path.join(__dirname, "../../src/locales/en/translation.json"), "utf8")

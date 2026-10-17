@@ -446,7 +446,7 @@ async function extractZipWindows(zipPath, destDir) {
   }
 
   const command =
-    `Expand-Archive -Force -LiteralPath '${escapePowerShellSingleQuoted(zipPath)}' ` +
+    `Expand-Archive -ErrorAction Stop -Force -LiteralPath '${escapePowerShellSingleQuoted(zipPath)}' ` +
     `-DestinationPath '${escapePowerShellSingleQuoted(destDir)}'`;
 
   return new Promise((resolve, reject) => {

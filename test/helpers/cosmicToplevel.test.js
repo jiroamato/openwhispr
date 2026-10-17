@@ -76,14 +76,23 @@ function startCompositor(t, { globals, toplevels }) {
       }
     });
   });
-  const socketPath = path.join(runtimeDir, "wayland-test");
+  const socketPath =
+    process.platform === "win32"
+      ? path.join("\\\\.\\pipe", path.basename(runtimeDir))
+      : path.join(runtimeDir, "wayland-test");
   t.after(() => {
     server.close();
     fs.rmSync(runtimeDir, { recursive: true, force: true });
   });
   return new Promise((resolve) =>
     server.listen(socketPath, () =>
-      resolve({ env: { XDG_RUNTIME_DIR: runtimeDir, WAYLAND_DISPLAY: "wayland-test" }, binds })
+      resolve({
+        env: {
+          XDG_RUNTIME_DIR: path.dirname(socketPath),
+          WAYLAND_DISPLAY: path.basename(socketPath),
+        },
+        binds,
+      })
     )
   );
 }

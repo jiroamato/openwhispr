@@ -60,10 +60,10 @@ async function renderChatStreaming(
     cachePrefix: "openwhispr-chat-streaming-cancellation-test-",
     mockModules: SIGNED_OUT_AUTH_MOCK,
   });
-  const [{ default: viteI18next }, { initReactI18next }] = await Promise.all([
-    vite.ssrLoadModule("i18next"),
-    vite.ssrLoadModule("react-i18next"),
-  ]);
+  // react-i18next depends on i18next. Concurrent Vite SSR imports can
+  // deadlock their module initialization when the full suite is under load.
+  const { default: viteI18next } = await vite.ssrLoadModule("i18next");
+  const { initReactI18next } = await vite.ssrLoadModule("react-i18next");
   if (!viteI18next.isInitialized) {
     const translation = JSON.parse(
       fs.readFileSync(path.join(__dirname, "../../src/locales/en/translation.json"), "utf8")
@@ -346,11 +346,7 @@ test("an unmount mid-stream persists the partial reply without delivering it", a
         completionCalls += 1;
       },
     });
-    for (
-      let i = 0;
-      i < 50 && !getMessages().some((m) => m.content === "Partial reply");
-      i++
-    ) {
+    for (let i = 0; i < 50 && !getMessages().some((m) => m.content === "Partial reply"); i++) {
       await waitForFlush();
     }
   });

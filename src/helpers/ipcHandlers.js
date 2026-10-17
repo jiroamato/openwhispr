@@ -124,6 +124,7 @@ const { i18nMain, changeLanguage } = require("./i18nMain");
 const DeepgramStreaming = require("./deepgramStreaming");
 const { GeminiLiveStreaming, GEMINI_LIVE_MODEL } = require("./geminiLiveStreaming");
 const CortiStreaming = require("./cortiStreaming");
+const { CodexDictationStreaming } = require("./codexDictationStreaming");
 const OpenAIRealtimeStreaming = require("./openaiRealtimeStreaming");
 const { getCortiToken } = require("./cortiAuth");
 const { ONBOARDING_DEMO_KINDS, ONBOARDING_DEMO_STATUSES } = require("./onboardingInputPolicy");
@@ -8896,7 +8897,8 @@ class IPCHandlers {
     };
 
     const setupDictationCallbacks = (streaming, event) => {
-      const isOrukeet = streaming instanceof OrukeetStreaming;
+      const isOrukeet =
+        streaming instanceof OrukeetStreaming || streaming instanceof CodexDictationStreaming;
       const canNotify = () =>
         !isOrukeet || (this._dictationStreaming === streaming && !event.sender.isDestroyed?.());
       if (isOrukeet) {
@@ -8908,6 +8910,7 @@ class IPCHandlers {
         streaming.onClose = () => event.sender.removeListener?.("destroyed", ownerGone);
       }
       streaming.onPartialTranscript = (text) => {
+        if (!canNotify()) return;
         event.sender.send("dictation-realtime-partial", text);
         if (this._dictationPreviewEnabled && text) {
           this.windowManager.showTranscriptionPreview(text);
@@ -8925,6 +8928,7 @@ class IPCHandlers {
         if (this._dictationPreviewEnabled) this.windowManager.hideTranscriptionPreview();
       };
       streaming.onSessionEnd = (data) => {
+        if (!canNotify()) return;
         event.sender.send("dictation-realtime-session-end", data || {});
         if (this._dictationPreviewEnabled) this.windowManager.hideTranscriptionPreview();
       };
@@ -8980,7 +8984,7 @@ class IPCHandlers {
         options.baseUrl,
         options.pipelineOptions,
         readsSavedKey ? credentialGeneration : null,
-        provider === "openai-realtime"
+        provider === "openai-realtime" || provider === "codex-dictation"
           ? OpenAIRealtimeStreaming.normalizeLanguage(options.language)
           : null,
       ]);
@@ -9019,9 +9023,11 @@ class IPCHandlers {
         // fail-closed for genuinely unknown providers (#1624).
         const provider = options.provider ?? "openai-realtime";
         const streaming =
-          provider === "orukeet"
-            ? new OrukeetStreaming(isCloud ? MANAGED_STREAM_OPTIONS : {})
-            : new OpenAIRealtimeStreaming();
+          provider === "codex-dictation"
+            ? new CodexDictationStreaming()
+            : provider === "orukeet"
+              ? new OrukeetStreaming(isCloud ? MANAGED_STREAM_OPTIONS : {})
+              : new OpenAIRealtimeStreaming();
         if (provider === "orukeet")
           streaming.onUsageError = (metadata) =>
             debugLogger.error("Combined cleanup usage could not be recorded", metadata);
@@ -9033,6 +9039,15 @@ class IPCHandlers {
         streaming.connectionKey = dictationConnectionKey(options);
         this._dictationStreaming = streaming;
         try {
+          if (provider === "codex-dictation") {
+            if (isCloud) throw new Error("Codex dictation requires a custom proxy");
+            await streaming.connect({
+              apiKey: this.environmentManager.getCustomTranscriptionKey(),
+              baseUrl: options.baseUrl,
+              language: options.language,
+            });
+            return;
+          }
           if (provider === "orukeet") {
             if (isCloud) {
               await connectManagedOrukeet({
@@ -9078,7 +9093,8 @@ class IPCHandlers {
             });
           }
         } catch (err) {
-          if (provider === "orukeet") await streaming.disconnect().catch(() => {});
+          if (provider === "orukeet" || provider === "codex-dictation")
+            await streaming.disconnect().catch(() => {});
           if (this._dictationStreaming === streaming) this._dictationStreaming = null;
           throw err;
         }
@@ -9736,7 +9752,7 @@ class IPCHandlers {
     // the second finds the first's fresh socket and reuses it rather than
     // discarding it and minting another.
     const isUnusedOrukeetConnection = (streaming, options) =>
-      streaming instanceof OrukeetStreaming &&
+      (streaming instanceof OrukeetStreaming || streaming instanceof CodexDictationStreaming) &&
       streaming.isConnected &&
       !streaming.failure &&
       !streaming.finalPromise &&
@@ -9784,8 +9800,11 @@ class IPCHandlers {
     });
 
     ipcMain.handle("dictation-realtime-finalize", async () => {
-      if (!(this._dictationStreaming instanceof OrukeetStreaming)) {
-        return { success: false, error: "No Orukeet recording is active" };
+      if (
+        !(this._dictationStreaming instanceof OrukeetStreaming) &&
+        !(this._dictationStreaming instanceof CodexDictationStreaming)
+      ) {
+        return { success: false, error: "No acknowledged dictation recording is active" };
       }
       try {
         return { success: true, ...(await this._dictationStreaming.finalize()) };

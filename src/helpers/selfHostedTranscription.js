@@ -28,6 +28,16 @@ export function isOrukeetEndpoint(settings) {
   );
 }
 
+export function isCodexDictationStreaming(settings) {
+  return (
+    settings?.cloudTranscriptionMode === "byok" &&
+    settings?.cloudTranscriptionProvider === "custom" &&
+    (settings?.remoteTranscriptionModel || settings?.cloudTranscriptionModel) ===
+      "codex-transcribe" &&
+    Boolean(settings?.remoteTranscriptionUrl || settings?.cloudTranscriptionBaseUrl)
+  );
+}
+
 export function isOrukeetStreaming(settings) {
   return settings?.cloudTranscriptionMode === "byok" && isOrukeetEndpoint(settings);
 }

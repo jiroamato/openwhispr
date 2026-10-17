@@ -30,11 +30,11 @@ function withInstall(fn) {
     const savedExecPath = process.execPath;
     const savedResourcesPath = process.resourcesPath;
     MANAGED_ENV.forEach((name) => setEnv(name, undefined));
-    process.env.XDG_DATA_HOME = path.join(root, "data");
+    process.env.XDG_DATA_HOME = path.join(root, "data").replace(/\\/g, "/");
     const resourcesPath = path.join(root, "install", "resources");
     fs.mkdirSync(resourcesPath, { recursive: true });
-    setProcessPath("execPath", path.join(root, "install", "open-whispr-app"));
-    setProcessPath("resourcesPath", resourcesPath);
+    setProcessPath("execPath", path.join(root, "install", "open-whispr-app").replace(/\\/g, "/"));
+    setProcessPath("resourcesPath", resourcesPath.replace(/\\/g, "/"));
     try {
       await fn({ root, resourcesPath, applicationsDir: path.join(root, "data", "applications") });
     } finally {
@@ -67,6 +67,7 @@ function loadHelper(xdg) {
   delete require.cache[helperPath];
   Module._load = function loadWithStubs(request, parent, isMain) {
     if (request === "child_process") return { execFileSync: xdg.execFileSync };
+    if (request === "path") return path.posix;
     return originalLoad.call(this, request, parent, isMain);
   };
   try {
@@ -168,7 +169,7 @@ test(
 
     assert.deepEqual(registerLinuxUrlSchemeHandler("openwhispr", []), { registered: true });
 
-    const wrapper = path.join(root, "install", "open-whispr");
+    const wrapper = path.join(root, "install", "open-whispr").replace(/\\/g, "/");
     assert.equal(execLine(applicationsDir), `${wrapper} %U`);
   })
 );

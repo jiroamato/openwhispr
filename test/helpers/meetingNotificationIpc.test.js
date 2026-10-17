@@ -91,6 +91,7 @@ test.before(() => {
 });
 
 test.after(() => {
+  fakeThis?.metaActivation?.dispose();
   Module._load = originalLoad;
   fs.rmSync(userDataDirectory, { recursive: true, force: true });
 });

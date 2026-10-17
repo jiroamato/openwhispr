@@ -102,7 +102,12 @@ test("derives tar flags from the archive extension", async () => {
   }
 });
 
-test("kills and rejects a tar process that does not exit before the timeout", async () => {
+test("kills and rejects a tar process that does not exit before the timeout", async (t) => {
+  const originalPlatform = process.platform;
+  Object.defineProperty(process, "platform", { value: "linux", configurable: true });
+  t.after(() =>
+    Object.defineProperty(process, "platform", { value: originalPlatform, configurable: true })
+  );
   const child = makeChild();
 
   await assert.rejects(
@@ -116,7 +121,12 @@ test("kills and rejects a tar process that does not exit before the timeout", as
   assert.equal(child.killed, true);
 });
 
-test("rejects after the kill grace period when the killed process never closes", async () => {
+test("rejects after the kill grace period when the killed process never closes", async (t) => {
+  const originalPlatform = process.platform;
+  Object.defineProperty(process, "platform", { value: "linux", configurable: true });
+  t.after(() =>
+    Object.defineProperty(process, "platform", { value: originalPlatform, configurable: true })
+  );
   const child = makeChild({ closeOnKill: false });
 
   await assert.rejects(

@@ -453,7 +453,7 @@ test("actions reject stale steps and drag only the packaged application", async 
     ...state,
     path: "/private/secret",
   });
-  assert.equal(helper.dragged.file, "/Applications/OpenWhispr.app");
+  assert.equal(helper.dragged.file, path.resolve("/Applications/OpenWhispr.app"));
   assert.ok(helper.shown);
 });
 

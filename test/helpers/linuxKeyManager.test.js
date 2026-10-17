@@ -185,26 +185,28 @@ function stubInputDir(
 ) {
   const realReaddir = fs.readdirSync;
   t.mock.method(fs, "readdirSync", (target, ...rest) => {
-    if (String(target) !== "/dev/input") return realReaddir.call(fs, target, ...rest);
+    if (String(target).replace(/\\/g, "/") !== "/dev/input")
+      return realReaddir.call(fs, target, ...rest);
     if (!entries) throw listError();
     return entries;
   });
 
   const realAccess = fs.accessSync;
   t.mock.method(fs, "accessSync", (target, ...rest) => {
-    if (!String(target).startsWith("/dev/input/")) return realAccess.call(fs, target, ...rest);
-    if (!readable.includes(String(target))) throw eacces();
+    if (!String(target).replace(/\\/g, "/").startsWith("/dev/input/"))
+      return realAccess.call(fs, target, ...rest);
+    if (!readable.includes(String(target).replace(/\\/g, "/"))) throw eacces();
   });
 
   // Every /sys/class/input read is answered here, so a Linux runner's own
   // devices never leak into the result.
   const realReadFile = fs.readFileSync;
   t.mock.method(fs, "readFileSync", (target, ...rest) => {
-    if (!String(target).startsWith("/sys/class/input/")) {
+    if (!String(target).replace(/\\/g, "/").startsWith("/sys/class/input/")) {
       return realReadFile.call(fs, target, ...rest);
     }
     const match = /^\/sys\/class\/input\/(event\d+)\/device\/capabilities\/(ev|key)$/.exec(
-      String(target)
+      String(target).replace(/\\/g, "/")
     );
     if (!sysfs || !match) throw enoent();
     const [, node, bitmap] = match;
