@@ -1,3 +1,4 @@
+const path = require("node:path");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
@@ -64,18 +65,21 @@ test("validates the ONNX Runtime library the sherpa binaries load", () => {
   const appPath = "/tmp/OpenWhispr.app";
   const result = sherpaDownloader.verifyPackagedMacosParakeet?.(appPath, {
     readDirectory(directory) {
-      assert.equal(directory, `${appPath}/Contents/Resources/bin`);
+      assert.equal(directory, path.join(appPath, "Contents", "Resources", "bin"));
       return ["libonnxruntime.dylib"];
     },
     runVtool(libraryPath) {
-      assert.equal(libraryPath, `${appPath}/Contents/Resources/bin/libonnxruntime.dylib`);
+      assert.equal(
+        libraryPath,
+        path.join(appPath, "Contents", "Resources", "bin", "libonnxruntime.dylib")
+      );
       return UNIVERSAL_VTOOL_OUTPUT;
     },
   });
 
   assert.deepEqual(result, {
     architectures: ["x86_64", "arm64"],
-    libraryPath: `${appPath}/Contents/Resources/bin/libonnxruntime.dylib`,
+    libraryPath: path.join(appPath, "Contents", "Resources", "bin", "libonnxruntime.dylib"),
     minimumVersion: "15.5",
   });
 });

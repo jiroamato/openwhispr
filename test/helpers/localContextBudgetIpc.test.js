@@ -106,7 +106,7 @@ test("returns the ceiling and display name for a bundled model", async () => {
     modelName: "Qwen3.5 9B",
   });
   assert.deepEqual(ceilingCalls, [
-    { modelId: "qwen3.5-9b-q4_k_m", modelPath: "/models/qwen.gguf" },
+    { modelId: "qwen3.5-9b-q4_k_m", modelPath: require("node:path").join("/models", "qwen.gguf") },
   ]);
 });
 

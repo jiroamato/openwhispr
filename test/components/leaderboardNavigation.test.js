@@ -3,7 +3,8 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const read = (relativePath) => fs.readFileSync(path.join(__dirname, "../..", relativePath), "utf8");
+const read = (relativePath) =>
+  fs.readFileSync(path.join(__dirname, "../..", relativePath), "utf8").replace(/\r\n/g, "\n");
 
 test("the leaderboard is tabbed inside the Insights view", () => {
   const controlPanel = read("src/components/ControlPanel.tsx");
