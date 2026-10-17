@@ -1,3 +1,4 @@
+import { isCodexDictationStreaming } from "./selfHostedTranscription.js";
 // Single source of truth for batch speech-to-text routing across dictation,
 // retry, and upload. Callers resolve their scope's settings into the flat base
 // names and handle the OpenWhispr-cloud pipeline upstream; streaming provider
@@ -313,9 +314,10 @@ export function resolveTranscriptionRoute({
         provider: "self-hosted",
         endpoint: buildBatchEndpoint(rawUrl, base, selfHostedModel),
         model: selfHostedModel,
-        auth: isOrukeetEndpoint(s)
-          ? { scheme: "bearer", keyRef: "custom" }
-          : { scheme: "none", keyRef: null },
+        auth:
+          isOrukeetEndpoint(s) || isCodexDictationStreaming(s)
+            ? { scheme: "bearer", keyRef: "custom" }
+            : { scheme: "none", keyRef: null },
         sizeCapBytes: null,
         language,
       };

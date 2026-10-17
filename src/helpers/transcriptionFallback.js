@@ -33,6 +33,7 @@ export function isManagedOrukeetStream({ providerName, cloudTranscriptionMode })
 // session response failed. Scoped to the managed Orukeet route so no other
 // provider's start-failure behavior changes.
 export function resolveStreamingStartFallback({ providerName, cloudTranscriptionMode, result }) {
+  if (providerName === "codex-dictation") return "session_unavailable";
   if (!isManagedOrukeetStream({ providerName, cloudTranscriptionMode })) return null;
   if (USER_ACTIONABLE_START_FAILURES.has(result.code) || result.code?.startsWith("POLICY_")) {
     return null;

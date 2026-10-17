@@ -86,6 +86,7 @@ import { getTranscriptionApiKey } from "../services/fileTranscription";
 import { shouldSkipTranscriptionApiKey } from "./transcriptionAuth";
 import {
   isOrukeetStreaming,
+  isCodexDictationStreaming,
   isSelfHostedTranscription,
   resolveSelfHostedTranscriptionModel,
 } from "./selfHostedTranscription";
@@ -449,6 +450,11 @@ const STREAMING_PROVIDERS = {
     onSessionEnd: (cb) => window.electronAPI.onAssemblyAiSessionEnd(cb),
   },
   "openai-realtime": makeDictationRealtimeProvider("openai-realtime"),
+  "codex-dictation": {
+    ...makeDictationRealtimeProvider("codex-dictation"),
+    finalizeAcknowledged: true,
+    finalize: () => window.electronAPI.dictationRealtimeFinalize(),
+  },
   orukeet: {
     ...makeDictationRealtimeProvider("orukeet"),
     finalizeAcknowledged: true,
@@ -4653,6 +4659,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     // setups; an error resolution must fail closed on the batch path too.
     if (getManagedTranscriptionResolution()) return false;
 
+    if (isCodexDictationStreaming(s)) return Boolean(s.customTranscriptionApiKey);
     if (isOrukeetStreaming(s)) return Boolean(s.customTranscriptionApiKey);
 
     // Self-hosted transcription is batch HTTP to the user's server, never cloud realtime WS.
@@ -5115,10 +5122,11 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       // to; stop finishes that recorder before a refused commit can arrive.
       const failsOver =
         Boolean(this.streamingFallbackRecorder) &&
-        isManagedOrukeetStream({
-          providerName,
-          cloudTranscriptionMode: getSettings().cloudTranscriptionMode,
-        });
+        (providerName === "codex-dictation" ||
+          isManagedOrukeetStream({
+            providerName,
+            cloudTranscriptionMode: getSettings().cloudTranscriptionMode,
+          }));
 
       this.streamingProcessor.port.onmessage = (event) => {
         // The worklet posts its remaining PCM followed by a "flushed" sentinel
@@ -5705,6 +5713,10 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       );
     }
 
+    // Only an acknowledged close can replace the retained batch recording.
+    if (providerName === "codex-dictation" && !finalAcknowledged) {
+      finalText = "";
+    }
     this.cleanupStreamingListeners(sessionId);
     if (wasCancelled()) return true;
 
@@ -6035,7 +6047,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     // reads as silence for a retry, as batch does.
     const failBatchFallback = (error) => {
       const outcome = transcriptionFailureOutcome(error);
-      if (!failoverReason && outcome.report) return;
+      if (!failoverReason && providerName !== "codex-dictation" && outcome.report) return;
       failureReport = outcome.report;
       if (outcome.keepAudio) {
         delivery.resultHandled = this.saveFailedTranscription(error.message, error.code || null, {
@@ -6046,7 +6058,11 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     };
     if (
       !finalText &&
-      (failoverReason ? !failoverSilent : !finalAcknowledged && durationSeconds > 2) &&
+      (providerName === "codex-dictation"
+        ? !finalAcknowledged
+        : failoverReason
+          ? !failoverSilent
+          : !finalAcknowledged && durationSeconds > 2) &&
       fallbackBlob?.size > 0
     ) {
       const target = resolveStreamingFallbackTarget(getSettings());
