@@ -98,6 +98,7 @@ test.before(() => {
 });
 
 test.after(() => {
+  target?.metaActivation?.dispose();
   Module._load = originalLoad;
   fs.rmSync(importDir, { recursive: true, force: true });
 });

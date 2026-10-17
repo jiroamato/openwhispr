@@ -14,6 +14,7 @@ const handlersModulePath = require.resolve("../../src/helpers/ipcHandlers");
 const whisperModulePath = require.resolve("../../src/helpers/whisper");
 const originalLoad = Module._load;
 const handlers = new Map();
+const activations = new Set();
 const broadcasts = [];
 // A private userData, so nothing (e.g. tokenStore's auth-token.bin) is read from a shared temp dir
 const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "whisper-gpu-ipc-"));
@@ -101,6 +102,8 @@ test.beforeEach(() => {
   broadcasts.length = 0;
 });
 test.afterEach(() => {
+  for (const activation of activations) activation.dispose();
+  activations.clear();
   for (const key of ENV_KEYS) {
     if (savedEnv[key] === undefined) delete process.env[key];
     else process.env[key] = savedEnv[key];
@@ -167,6 +170,7 @@ function createHandlers({ downloadError = null } = {}) {
     get: (value, property) => (property in value ? value[property] : anything()),
   });
   IPCHandlers.prototype.setupHandlers.call(context);
+  if (target.metaActivation?.dispose) activations.add(target.metaActivation);
   context._attachWhisperServerListeners(serverManager);
   const invoke = (channel) => handlers.get(channel)({ sender: { isDestroyed: () => true } });
   return { serverManager, invoke, envWrites };
